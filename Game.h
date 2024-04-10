@@ -7,6 +7,7 @@
 #include "SimpleShader.h"
 #include "Lights.h"
 #include "Sky.h"
+#include "Emitter.h"
 
 #include <DirectXMath.h>
 #include <wrl/client.h>
@@ -31,6 +32,7 @@ private:
 
 	// Our scene
 	std::vector<std::shared_ptr<GameEntity>> entities;
+	std::vector<std::shared_ptr<Emitter>> particleSystems;
 	std::shared_ptr<Camera> camera;
 
 	// Lights
@@ -46,6 +48,8 @@ private:
 
 	// Texture related resources
 	Microsoft::WRL::ComPtr<ID3D11SamplerState> samplerOptions;
+	Microsoft::WRL::ComPtr<ID3D11BlendState> particleBlend;
+	Microsoft::WRL::ComPtr<ID3D11DepthStencilState> particleDepthState;
 
 	// Skybox
 	std::shared_ptr<Sky> sky;

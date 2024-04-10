@@ -123,6 +123,25 @@ void Game::Init()
 		0.01f,				// Near clip
 		100.0f,				// Far clip
 		CameraProjectionType::Perspective);
+
+	// Blend state description for either additive or alpha blending (based on “additive” boolean)
+	bool additive = true;
+	D3D11_BLEND_DESC additiveBlendDesc = {};
+	additiveBlendDesc.RenderTarget[0].BlendEnable = true;
+	additiveBlendDesc.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD; // Add both colors
+	additiveBlendDesc.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD; // Add both alpha values
+	additiveBlendDesc.RenderTarget[0].SrcBlend = additive ? D3D11_BLEND_ONE : D3D11_BLEND_SRC_ALPHA;
+	additiveBlendDesc.RenderTarget[0].DestBlend = additive ? D3D11_BLEND_ONE : D3D11_BLEND_INV_SRC_ALPHA;
+	additiveBlendDesc.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
+	additiveBlendDesc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ONE;
+	additiveBlendDesc.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+	device->CreateBlendState(&additiveBlendDesc, particleBlend.GetAddressOf());
+
+	D3D11_DEPTH_STENCIL_DESC particleDepthDesc = {};
+	particleDepthDesc.DepthEnable = true; // READ from depth buffer
+	particleDepthDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO; // No depth WRITING
+	particleDepthDesc.DepthFunc = D3D11_COMPARISON_LESS; // Standard depth comparison
+	device->CreateDepthStencilState(&particleDepthDesc, particleDepthState.GetAddressOf());
 }
 
 
@@ -140,6 +159,9 @@ void Game::LoadAssetsAndCreateEntities()
 	std::shared_ptr<SimpleVertexShader> skyVS = LoadShader(SimpleVertexShader, L"SkyVS.cso");
 	std::shared_ptr<SimplePixelShader> skyPS  = LoadShader(SimplePixelShader, L"SkyPS.cso");
 
+	std::shared_ptr<SimpleVertexShader> particleVS = LoadShader(SimpleVertexShader, L"ParticleVS.cso");
+	std::shared_ptr<SimplePixelShader> particlePS  = LoadShader(SimplePixelShader, L"ParticlePS.cso");
+
 	// Make the meshes
 	std::shared_ptr<Mesh> sphereMesh = std::make_shared<Mesh>(FixPath(L"../../Assets/Models/sphere.obj").c_str(), device);
 	std::shared_ptr<Mesh> helixMesh = std::make_shared<Mesh>(FixPath(L"../../Assets/Models/helix.obj").c_str(), device);
@@ -154,6 +176,7 @@ void Game::LoadAssetsAndCreateEntities()
 	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> bronzeA,  bronzeN,  bronzeR,  bronzeM;
 	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> roughA,  roughN,  roughR,  roughM;
 	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> woodA,  woodN,  woodR,  woodM;
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> particleTex;
 
 	// Load the textures using our succinct LoadTexture() macro
 	LoadTexture(L"../../Assets/Textures/cobblestone_albedo.png", cobbleA);
@@ -190,6 +213,8 @@ void Game::LoadAssetsAndCreateEntities()
 	LoadTexture(L"../../Assets/Textures/wood_normals.png", woodN);
 	LoadTexture(L"../../Assets/Textures/wood_roughness.png", woodR);
 	LoadTexture(L"../../Assets/Textures/wood_metal.png", woodM);
+
+	LoadTexture(L"../../Assets/Textures/magic_05.png", particleTex);
 
 	// Describe and create our sampler state
 	D3D11_SAMPLER_DESC sampDesc = {};
@@ -400,6 +425,8 @@ void Game::LoadAssetsAndCreateEntities()
 	entities.push_back(roughSphere);
 	entities.push_back(woodSphere);
 
+	particleSystems.push_back(std::make_shared<Emitter>(device, 3.0, 30.0, 100, DirectX::XMFLOAT3(0.0, 0.0, 0.0), particleTex, particlePS, particleVS, samplerOptions));
+
 
 	// Save assets needed for drawing point lights
 	lightMesh = sphereMesh;
@@ -487,6 +514,11 @@ void Game::Update(float deltaTime, float totalTime)
 	// Update the camera
 	camera->Update(deltaTime);
 
+	for (auto& ge : particleSystems)
+	{
+		ge->Update(totalTime, deltaTime);
+	}
+
 	// Check individual input
 	Input& input = Input::GetInstance();
 	if (input.KeyDown(VK_ESCAPE)) Quit();
@@ -535,6 +567,24 @@ void Game::Draw(float deltaTime, float totalTime)
 
 	// Draw the sky
 	sky->Draw(camera);
+
+	// Prep particle systems
+	UINT stride = sizeof(Vertex);
+	UINT offset = 0;
+	ID3D11Buffer* null = NULL;
+	context->IASetVertexBuffers(0, 1, &null, &stride, &offset);
+	context->OMSetBlendState(particleBlend.Get(), NULL, 0xffffffff);
+	context->OMSetDepthStencilState(particleDepthState.Get(), 0);
+
+	// Draw particle systems
+	for (auto& ge : particleSystems)
+	{
+		ge->Draw(context, totalTime, camera);
+	}
+
+	// Reset after particle systems
+	context->OMSetBlendState(NULL, NULL, 0xffffffff);
+	context->OMSetDepthStencilState(NULL, 0);
 
 	// Frame END
 	// - These should happen exactly ONCE PER FRAME
