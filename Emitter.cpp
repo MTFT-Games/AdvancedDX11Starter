@@ -3,21 +3,40 @@
 Emitter::Emitter(
 	Microsoft::WRL::ComPtr<ID3D11Device> device, 
 	float lifetime, 
-	float particlesPerSecond, 
+	float particlesPerSecond1, 
+	float particlesPerSecond2, 
 	int maxParticles,
-	DirectX::XMFLOAT3 startPos, 
+	DirectX::XMFLOAT3 startPos1, 
+	DirectX::XMFLOAT3 startPos2, 
+	DirectX::XMFLOAT3 startVel1,
+	DirectX::XMFLOAT3 startVel2,
+	DirectX::XMFLOAT3 accel1,
+	DirectX::XMFLOAT3 accel2,
+	DirectX::XMFLOAT4 startColor,
+	DirectX::XMFLOAT4 endColor,
 	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> texture, 
 	std::shared_ptr<SimplePixelShader> ps, 
 	std::shared_ptr<SimpleVertexShader> vs, 
-	Microsoft::WRL::ComPtr<ID3D11SamplerState> sampler) :
+	Microsoft::WRL::ComPtr<ID3D11SamplerState> sampler,
+	Microsoft::WRL::ComPtr<ID3D11BlendState> blendState) :
 	lifetime(lifetime), 
-	emitDelay(1.0/particlesPerSecond), 
+	emitDelay1(1.0f/particlesPerSecond1), 
+	emitDelay2(1.0f/particlesPerSecond2), 
+	emitDelay(emitDelay1),
 	maxParticles(maxParticles), 
-	startPos(startPos),
+	startPos1(startPos1),
+	startPos2(startPos2),
+	startVel1(startVel1),
+	startVel2(startVel2),
+	accel1(accel1),
+	accel2(accel2),
+	startColor(startColor),
+	endColor(endColor),
 	texture(texture),
 	ps(ps),
 	vs(vs),
-	sampler(sampler)
+	sampler(sampler),
+	blendState(blendState)
 {
 	// Make a dynamic buffer to hold all particle data on GPU
 	// Note: We'll be overwriting this every frame with new lifetime data
@@ -90,13 +109,27 @@ void Emitter::Update(float totalTime, float deltaTime)
 	while (timeSinceEmit > emitDelay && livingCount < maxParticles)
 	{
 		particles[firstDeadIndex].EmitTime = totalTime;
-		particles[firstDeadIndex].StartPos = startPos;
+		particles[firstDeadIndex].StartPos.x = startPos1.x + rand() / (float)RAND_MAX * (startPos2.x - startPos1.x);
+		particles[firstDeadIndex].StartPos.y = startPos1.y + rand() / (float)RAND_MAX * (startPos2.y - startPos1.y);
+		particles[firstDeadIndex].StartPos.z = startPos1.z + rand() / (float)RAND_MAX * (startPos2.z - startPos1.z);
+		particles[firstDeadIndex].StartVel.x = startVel1.x + rand() / (float)RAND_MAX * (startVel2.x - startVel1.x);
+		particles[firstDeadIndex].StartVel.y = startVel1.y + rand() / (float)RAND_MAX * (startVel2.y - startVel1.y);
+		particles[firstDeadIndex].StartVel.z = startVel1.z + rand() / (float)RAND_MAX * (startVel2.z - startVel1.z);
+		particles[firstDeadIndex].Accel.x = accel1.x + rand() / (float)RAND_MAX * (accel2.x - accel1.x);
+		particles[firstDeadIndex].Accel.y = accel1.y + rand() / (float)RAND_MAX * (accel2.y - accel1.y);
+		particles[firstDeadIndex].Accel.z = accel1.z + rand() / (float)RAND_MAX * (accel2.z - accel1.z);
+		particles[firstDeadIndex].StartColor = startColor;
+		particles[firstDeadIndex].EndColor = endColor;
 
 		firstDeadIndex++;
 		firstDeadIndex %= maxParticles;
 		livingCount++;
 
 		timeSinceEmit -= emitDelay;
+		if (emitDelay1 != emitDelay2)
+		{
+			emitDelay = emitDelay1 + rand() / (float)RAND_MAX * (emitDelay2 - emitDelay1);
+		}
 	}
 }
 
@@ -143,11 +176,14 @@ void Emitter::Draw(Microsoft::WRL::ComPtr<ID3D11DeviceContext> context, float to
 	vs->SetMatrix4x4("view", camera->GetView());
 	vs->SetMatrix4x4("projection", camera->GetProjection());
 	vs->SetFloat("currentTime", totalTime);
+	vs->SetFloat("lifetime", lifetime);
 	vs->CopyAllBufferData();
 
 	vs->SetShaderResourceView("ParticleData", particleSRV);
 	ps->SetShaderResourceView("Texture", texture);
 	ps->SetSamplerState("BasicSampler", sampler);
+
+	context->OMSetBlendState(blendState.Get(), NULL, 0xffffffff);
 
 	context->DrawIndexed(livingCount * 6, 0, 0);
 }

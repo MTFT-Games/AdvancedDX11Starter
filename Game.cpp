@@ -124,18 +124,6 @@ void Game::Init()
 		100.0f,				// Far clip
 		CameraProjectionType::Perspective);
 
-	// Blend state description for either additive or alpha blending (based on “additive” boolean)
-	bool additive = true;
-	D3D11_BLEND_DESC additiveBlendDesc = {};
-	additiveBlendDesc.RenderTarget[0].BlendEnable = true;
-	additiveBlendDesc.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD; // Add both colors
-	additiveBlendDesc.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD; // Add both alpha values
-	additiveBlendDesc.RenderTarget[0].SrcBlend = additive ? D3D11_BLEND_ONE : D3D11_BLEND_SRC_ALPHA;
-	additiveBlendDesc.RenderTarget[0].DestBlend = additive ? D3D11_BLEND_ONE : D3D11_BLEND_INV_SRC_ALPHA;
-	additiveBlendDesc.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
-	additiveBlendDesc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ONE;
-	additiveBlendDesc.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
-	device->CreateBlendState(&additiveBlendDesc, particleBlend.GetAddressOf());
 
 	D3D11_DEPTH_STENCIL_DESC particleDepthDesc = {};
 	particleDepthDesc.DepthEnable = true; // READ from depth buffer
@@ -176,7 +164,7 @@ void Game::LoadAssetsAndCreateEntities()
 	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> bronzeA,  bronzeN,  bronzeR,  bronzeM;
 	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> roughA,  roughN,  roughR,  roughM;
 	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> woodA,  woodN,  woodR,  woodM;
-	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> particleTex;
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> magic05, smoke01;
 
 	// Load the textures using our succinct LoadTexture() macro
 	LoadTexture(L"../../Assets/Textures/cobblestone_albedo.png", cobbleA);
@@ -214,7 +202,8 @@ void Game::LoadAssetsAndCreateEntities()
 	LoadTexture(L"../../Assets/Textures/wood_roughness.png", woodR);
 	LoadTexture(L"../../Assets/Textures/wood_metal.png", woodM);
 
-	LoadTexture(L"../../Assets/Textures/magic_05.png", particleTex);
+	LoadTexture(L"../../Assets/Textures/magic_05.png", magic05);
+	LoadTexture(L"../../Assets/Textures/smoke_01.png", smoke01);
 
 	// Describe and create our sampler state
 	D3D11_SAMPLER_DESC sampDesc = {};
@@ -425,7 +414,78 @@ void Game::LoadAssetsAndCreateEntities()
 	entities.push_back(roughSphere);
 	entities.push_back(woodSphere);
 
-	particleSystems.push_back(std::make_shared<Emitter>(device, 3.0, 30.0, 100, DirectX::XMFLOAT3(0.0, 0.0, 0.0), particleTex, particlePS, particleVS, samplerOptions));
+	Microsoft::WRL::ComPtr<ID3D11BlendState> additiveBlendState;
+	D3D11_BLEND_DESC additiveBlendDesc = {};
+	additiveBlendDesc.RenderTarget[0].BlendEnable = true;
+	additiveBlendDesc.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD; // Add both colors
+	additiveBlendDesc.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD; // Add both alpha values
+	additiveBlendDesc.RenderTarget[0].SrcBlend = D3D11_BLEND_ONE;
+	additiveBlendDesc.RenderTarget[0].DestBlend = D3D11_BLEND_ONE;
+	additiveBlendDesc.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
+	additiveBlendDesc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ONE;
+	additiveBlendDesc.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+	device->CreateBlendState(&additiveBlendDesc, additiveBlendState.GetAddressOf());
+
+	Microsoft::WRL::ComPtr<ID3D11BlendState> subtractiveBlendState;
+	D3D11_BLEND_DESC subtractiveBlendDesc = {};
+	subtractiveBlendDesc.RenderTarget[0].BlendEnable = true;
+	subtractiveBlendDesc.RenderTarget[0].BlendOp = D3D11_BLEND_OP_REV_SUBTRACT;
+	subtractiveBlendDesc.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD; // Add both alpha values
+	subtractiveBlendDesc.RenderTarget[0].SrcBlend = D3D11_BLEND_ONE;
+	subtractiveBlendDesc.RenderTarget[0].DestBlend = D3D11_BLEND_ONE;
+	subtractiveBlendDesc.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
+	subtractiveBlendDesc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ONE;
+	subtractiveBlendDesc.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+	device->CreateBlendState(&subtractiveBlendDesc, subtractiveBlendState.GetAddressOf());
+
+	Microsoft::WRL::ComPtr<ID3D11BlendState> normalBlendState;
+	D3D11_BLEND_DESC normalBlendDesc = {};
+	normalBlendDesc.RenderTarget[0].BlendEnable = true;
+	normalBlendDesc.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD; // Add both colors
+	normalBlendDesc.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD; // Add both alpha values
+	normalBlendDesc.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
+	normalBlendDesc.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
+	normalBlendDesc.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
+	normalBlendDesc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ONE;
+	normalBlendDesc.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+	device->CreateBlendState(&normalBlendDesc, normalBlendState.GetAddressOf());
+
+	// smokescreen like thing
+	particleSystems.push_back(std::make_shared<Emitter>(device, 20.0f, 
+		10.0f, 10.0f, 
+		300, 
+		DirectX::XMFLOAT3(2.0f, 2.0f, -3.0f), DirectX::XMFLOAT3(5.0f, 5.0f, -6.0f),
+		DirectX::XMFLOAT3(0.1f, 0.1f, 0.1f), DirectX::XMFLOAT3(-0.1f, -0.1f, -0.1f),
+		DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f), DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f),
+		DirectX::XMFLOAT4(0.5f, 0.5f, 0.5f, 0.8f), DirectX::XMFLOAT4(0.5f, 0.5f, 0.5f, 0.0f),
+		smoke01, particlePS, particleVS, samplerOptions, normalBlendState));
+	// exaust smoke like thing
+	particleSystems.push_back(std::make_shared<Emitter>(device, 5.0f,
+		5.0f, 30.0f,
+		200,
+		DirectX::XMFLOAT3(-6.0f, 2.0f, -3.0f), DirectX::XMFLOAT3(-4.0f, 2.0f, -5.0f),
+		DirectX::XMFLOAT3(0.1f, 1.0f, 0.1f), DirectX::XMFLOAT3(-0.1f, 1.2f, -0.1f),
+		DirectX::XMFLOAT3(-0.2f, 0.0f, 0.0f), DirectX::XMFLOAT3(-0.2f, 0.0f, 0.0f),
+		DirectX::XMFLOAT4(0.5f, 0.5f, 0.5f, 1.0f), DirectX::XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f),
+		smoke01, particlePS, particleVS, samplerOptions, subtractiveBlendState));
+	
+	particleSystems.push_back(std::make_shared<Emitter>(device, 1.0f, 
+		6.0f, 6.0f,
+		20, 
+		DirectX::XMFLOAT3(-2.0f, 0.0f, 0.0f), DirectX::XMFLOAT3(-2.0f, 0.0f, 0.0f),
+		DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f), DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f),
+		DirectX::XMFLOAT3(-10.0f, -10.0f, -10.0f), DirectX::XMFLOAT3(10.0f, 10.0f, 10.0f),
+		DirectX::XMFLOAT4(0.27f, 0.27f, 0.8, 0.8f), DirectX::XMFLOAT4(0.6f, 0.2f, 0.2f, 0.6f), 
+		magic05, particlePS, particleVS, samplerOptions, additiveBlendState));
+	
+	particleSystems.push_back(std::make_shared<Emitter>(device, 3.0f, 
+		10.0f, 10.0f, 
+		70, 
+		DirectX::XMFLOAT3(2.0f, 0.0f, 4.0f), DirectX::XMFLOAT3(2.0f, -6.0f, 4.0f),
+		DirectX::XMFLOAT3(2.0f, 0.0f, 0.0f), DirectX::XMFLOAT3(2.0f, 0.0f, 0.0f),
+		DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f), DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f),
+		DirectX::XMFLOAT4(0.3, 1.0, 0.3, 0.4), DirectX::XMFLOAT4(0.1, 0.3, 0.1, 0.7), 
+		magic05, particlePS, particleVS, samplerOptions, normalBlendState));
 
 
 	// Save assets needed for drawing point lights
@@ -573,7 +633,6 @@ void Game::Draw(float deltaTime, float totalTime)
 	UINT offset = 0;
 	ID3D11Buffer* null = NULL;
 	context->IASetVertexBuffers(0, 1, &null, &stride, &offset);
-	context->OMSetBlendState(particleBlend.Get(), NULL, 0xffffffff);
 	context->OMSetDepthStencilState(particleDepthState.Get(), 0);
 
 	// Draw particle systems

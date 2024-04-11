@@ -1,6 +1,7 @@
 struct VertexToPixel
 {
     float4 screenPosition : SV_POSITION;
+    float4 color : COLOR;
     float2 uv : TEXCOORD;
 };
 
@@ -9,5 +10,5 @@ SamplerState BasicSampler : register(s0);
 
 float4 main(VertexToPixel input) : SV_TARGET
 {
-    return Texture.Sample(BasicSampler, input.uv);;
+    return Texture.Sample(BasicSampler, input.uv) * input.color;
 }

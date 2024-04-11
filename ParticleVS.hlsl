@@ -4,18 +4,24 @@ cbuffer externalData : register(b0)
     matrix view;
     matrix projection;
     float currentTime;
+    float lifetime;
 };
 
 struct Particle
 {
     float EmitTime;
     float3 StartPos;
+    float4 StartColor;
+    float4 EndColor;
+    float3 StartVel;
+    float3 Accel;
 };
 
 // Out of the vertex shader (and eventually input to the PS)
 struct VertexToPixel
 {
     float4 screenPosition : SV_POSITION;
+    float4 color : COLOR;
     float2 uv : TEXCOORD;
 };
 
@@ -31,8 +37,9 @@ VertexToPixel main(uint id : SV_VertexID)
     
     // Simulate (just gravity for now)
     float age = currentTime - p.EmitTime;
+    float lifePercent = age / lifetime;
     // position + velocity * time + 0.5 * acceleration * time^2 | for constant accel
-    float3 position = p.StartPos + 0.0 * age + float3(0, -9.8, 0) * age * age * 0.5;
+    float3 position = p.StartPos + p.StartVel * age + p.Accel * age * age * 0.5;
     
     // billboarding (I think theres a better? way to do this like the fill screen vertex shader from ggp)
     float2 offsets[4];
@@ -52,7 +59,7 @@ VertexToPixel main(uint id : SV_VertexID)
     VertexToPixel output;
     output.uv = uvs[cornerID];
     output.screenPosition = mul(mul(projection, view), float4(position, 1.0));
-    // TODO: pass color if needed    
+    output.color = lerp(p.StartColor, p.EndColor, lifePercent);
     
 	return output;
 }
