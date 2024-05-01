@@ -51,7 +51,6 @@ public:
 	DirectX::XMFLOAT3 startVel2;
 	DirectX::XMFLOAT3 accel1;
 	DirectX::XMFLOAT3 accel2;
-	// float 4 so if i add per emmiter blend states alpha can be used
 	DirectX::XMFLOAT4 startColor;
 	DirectX::XMFLOAT4 endColor;
 	Microsoft::WRL::ComPtr<ID3D11BlendState> blendState;

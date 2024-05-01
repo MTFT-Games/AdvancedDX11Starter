@@ -475,7 +475,7 @@ void Game::LoadAssetsAndCreateEntities()
 		DirectX::XMFLOAT3(-2.0f, 0.0f, 0.0f), DirectX::XMFLOAT3(-2.0f, 0.0f, 0.0f),
 		DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f), DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f),
 		DirectX::XMFLOAT3(-10.0f, -10.0f, -10.0f), DirectX::XMFLOAT3(10.0f, 10.0f, 10.0f),
-		DirectX::XMFLOAT4(0.27f, 0.27f, 0.8, 0.8f), DirectX::XMFLOAT4(0.6f, 0.2f, 0.2f, 0.6f), 
+		DirectX::XMFLOAT4(0.27f, 0.27f, 0.8f, 0.8f), DirectX::XMFLOAT4(0.6f, 0.2f, 0.2f, 0.6f), 
 		magic05, particlePS, particleVS, samplerOptions, additiveBlendState));
 	
 	particleSystems.push_back(std::make_shared<Emitter>(device, 3.0f, 
@@ -484,7 +484,7 @@ void Game::LoadAssetsAndCreateEntities()
 		DirectX::XMFLOAT3(2.0f, 0.0f, 4.0f), DirectX::XMFLOAT3(2.0f, -6.0f, 4.0f),
 		DirectX::XMFLOAT3(2.0f, 0.0f, 0.0f), DirectX::XMFLOAT3(2.0f, 0.0f, 0.0f),
 		DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f), DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f),
-		DirectX::XMFLOAT4(0.3, 1.0, 0.3, 0.4), DirectX::XMFLOAT4(0.1, 0.3, 0.1, 0.7), 
+		DirectX::XMFLOAT4(0.3f, 1.0f, 0.3f, 0.4f), DirectX::XMFLOAT4(0.1f, 0.3f, 0.1f, 0.7f), 
 		magic05, particlePS, particleVS, samplerOptions, normalBlendState));
 
 
