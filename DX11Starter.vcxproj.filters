@@ -81,6 +81,9 @@
     <ClCompile Include="Emitter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Fluid.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Vertex.h">
@@ -149,6 +152,9 @@
     <ClInclude Include="Emitter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Fluid.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
@@ -179,6 +185,18 @@
       <Filter>Shaders</Filter>
     </FxCompile>
     <FxCompile Include="ParticlePS.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="AdvectionCS.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="DivergenceCS.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="PressureCS.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="ProjectionCS.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
   </ItemGroup>
