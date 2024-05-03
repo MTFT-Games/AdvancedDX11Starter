@@ -21,7 +21,7 @@ void main( uint3 DTid : SV_DispatchThreadID )
     float3 inputIndex = currentIndex - velocity * deltaTime;
     
     
-    if (channels = 3)
+    if (channels == 3)
     {
         out3[DTid] = input.SampleLevel(standardSampler, inputIndex/gridsize, 0).rgb;
     }

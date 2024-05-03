@@ -68,8 +68,8 @@ Fluid::Fluid(
 
 void Fluid::Update(float deltaTime)
 {
-	Advect(velocities);
-	Advect(densities);
+	Advect(velocities, deltaTime);
+	Advect(densities, deltaTime);
 	// I dont think anything else needs advection yet
 
 	Diverge();
@@ -81,13 +81,108 @@ void Fluid::Update(float deltaTime)
 	// I think thats it...? this feels like a short update for the complicated thing that this is
 }
 
-void Fluid::Advect(FluidDataBuffer buffers[2])
+void Fluid::Advect(FluidDataBuffer buffers[2], float deltaTime)
 {
 	// Need to set srv and uavs
+	advectionCS->SetShader();
+	advectionCS->SetShaderResourceView("velocities", velocities->SRV);
+	advectionCS->SetShaderResourceView("input", buffers[0].SRV);
+	if (buffers[1].channels == 3)
+	{
+		advectionCS->SetUnorderedAccessView("out3", buffers[1].UAV);
+	}
+	else
+	{
+		advectionCS->SetUnorderedAccessView("out1", buffers[1].UAV);
+	}
+
+	// sampler needed too
+	advectionCS->SetSamplerState("standardSampler", clampingLinSampler);
+
 	// set constant buffers
+	advectionCS->SetFloat("delatTime", deltaTime);
+	// there isnt a set uint :(. i think this might work. I could also just use an int instead but naaa
+	advectionCS->SetData("gridsize", &gridSize, sizeof(XMUINT3));
+	advectionCS->SetData("channels", &buffers[1].channels, sizeof(unsigned int));
+
 	// REMEMBER TO copy all buffers
+	advectionCS->CopyAllBufferData();
+
 	// dispatch
-	// swap buffers
+	advectionCS->DispatchByThreads(gridSize.x, gridSize.y, gridSize.z);
+
+	// swap buffers I think this will probably work 
+	FluidDataBuffer temp = buffers[0];
+	buffers[0] = buffers[1];
+	buffers[1] = temp;
+
 	// uhhhhhhh *checks demo* is there anything else?
 	// oh i should probably unset buffers, that seems like a good idea
+	advectionCS->SetShaderResourceView("velocities", 0);
+	advectionCS->SetShaderResourceView("input", 0);
+	if (buffers[1].channels == 3)
+	{
+		advectionCS->SetUnorderedAccessView("out3", 0);
+	}
+	else
+	{
+		advectionCS->SetUnorderedAccessView("out1", 0);
+	}
+}
+
+void Fluid::Diverge()
+{
+	divergenceCS->SetShader();
+	divergenceCS->SetShaderResourceView("velocities", velocities[0].SRV);
+	divergenceCS->SetUnorderedAccessView("divergences", divergence.UAV);
+	divergenceCS->SetSamplerState("standardSampler", borderBlackSampler);
+	divergenceCS->SetData("gridsize", &gridSize, sizeof(XMUINT3));
+	divergenceCS->CopyAllBufferData();
+
+	divergenceCS->DispatchByThreads(gridSize.x, gridSize.y, gridSize.z);
+
+	divergenceCS->SetShaderResourceView("velocities", 0);
+	divergenceCS->SetUnorderedAccessView("divergences", 0);
+}
+
+void Fluid::Pressure()
+{
+	pressureCS->SetShader();
+	pressureCS->SetShaderResourceView("divergence", divergence.SRV);
+	pressureCS->SetShaderResourceView("pressureIn", pressures[0].SRV);
+	pressureCS->SetUnorderedAccessView("pressureOut", pressures[1].UAV);
+	pressureCS->SetSamplerState("standardSampler", borderBlackSampler);
+	pressureCS->SetData("gridsize", &gridSize, sizeof(XMUINT3));
+	pressureCS->CopyAllBufferData();
+	
+	pressureCS->DispatchByThreads(gridSize.x, gridSize.y, gridSize.z);
+	
+	FluidDataBuffer temp = pressures[0];
+	pressures[0] = pressures[1];
+	pressures[1] = temp;
+
+	pressureCS->SetShaderResourceView("divergence", 0);
+	pressureCS->SetShaderResourceView("pressureIn", 0);
+	pressureCS->SetUnorderedAccessView("pressureOut", 0);
+}
+
+void Fluid::Project()
+{
+	projectionCS->SetShader();
+	projectionCS->SetShaderResourceView("pressure", pressures[0].SRV);
+	projectionCS->SetShaderResourceView("velocityIn", velocities[0].SRV);
+	projectionCS->SetUnorderedAccessView("velocityOut", velocities[1].UAV);
+	projectionCS->SetSamplerState("standardSampler", borderBlackSampler);
+	projectionCS->SetData("gridsize", &gridSize, sizeof(XMUINT3));
+	projectionCS->CopyAllBufferData();
+
+	projectionCS->DispatchByThreads(gridSize.x, gridSize.y, gridSize.z);
+
+	FluidDataBuffer temp = velocities[0];
+	velocities[0] = velocities[1];
+	velocities[1] = temp;
+
+	projectionCS->SetShaderResourceView("pressure", 0);
+	projectionCS->SetShaderResourceView("velocityIn", 0);
+	projectionCS->SetUnorderedAccessView("velocityOut", 0);
 }

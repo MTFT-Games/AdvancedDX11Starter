@@ -32,12 +32,15 @@ private:
 	std::shared_ptr<SimplePixelShader> ps;
 	std::shared_ptr<SimpleVertexShader> vs;
 
+	Microsoft::WRL::ComPtr<ID3D11SamplerState> clampingLinSampler;
+	Microsoft::WRL::ComPtr<ID3D11SamplerState> borderBlackSampler;
+
 	std::shared_ptr<SimpleComputeShader> advectionCS;
 	std::shared_ptr<SimpleComputeShader> divergenceCS;
 	std::shared_ptr<SimpleComputeShader> pressureCS;
 	std::shared_ptr<SimpleComputeShader> projectionCS;
 
-	void Advect(FluidDataBuffer buffers[2]); // remember to swap them when implementing
+	void Advect(FluidDataBuffer buffers[2], float deltaTime); // remember to swap them when implementing
 	void Diverge();
 	void Pressure(); // remember to swap buffers and do it several times
 	void Project();

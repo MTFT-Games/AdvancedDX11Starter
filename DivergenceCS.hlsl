@@ -1,3 +1,8 @@
+cbuffer externalData : register(b0)
+{
+    uint3 gridsize;
+}
+
 Texture3D velocities : register(t0);
 RWTexture3D<float> divergences : register(u0);
 
@@ -8,12 +13,12 @@ void main( uint3 DTid : SV_DispatchThreadID )
 {
     float3 fID = float3(DTid);
     
-    float velR = velocities.SampleLevel(standardSampler, fID + float3(1, 0, 0), 0).x;
-    float velL = velocities.SampleLevel(standardSampler, fID + float3(-1, 0, 0), 0).x;
-    float velU = velocities.SampleLevel(standardSampler, fID + float3(0, 1, 0), 0).y;
-    float velD = velocities.SampleLevel(standardSampler, fID + float3(0, -1, 0), 0).y;
-    float velF = velocities.SampleLevel(standardSampler, fID + float3(0, 0, 1), 0).z;
-    float velB = velocities.SampleLevel(standardSampler, fID + float3(0, 0, -1), 0).z;
+    float velR = velocities.SampleLevel(standardSampler, (fID + float3(1, 0, 0))/gridsize, 0).x;
+    float velL = velocities.SampleLevel(standardSampler, (fID + float3(-1, 0, 0)) / gridsize, 0).x;
+    float velU = velocities.SampleLevel(standardSampler, (fID + float3(0, 1, 0)) / gridsize, 0).y;
+    float velD = velocities.SampleLevel(standardSampler, (fID + float3(0, -1, 0)) / gridsize, 0).y;
+    float velF = velocities.SampleLevel(standardSampler, (fID + float3(0, 0, 1)) / gridsize, 0).z;
+    float velB = velocities.SampleLevel(standardSampler, (fID + float3(0, 0, -1)) / gridsize, 0).z;
     
     // Not sure why we half this, its in the slides tho. 
     // Might be in the GPU gems but i only skimmed that 
