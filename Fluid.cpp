@@ -65,3 +65,29 @@ Fluid::Fluid(
 	device->CreateShaderResourceView(texture.Get(), 0, divergence.SRV.GetAddressOf());
 	device->CreateUnorderedAccessView(texture.Get(), 0, divergence.UAV.GetAddressOf());
 }
+
+void Fluid::Update(float deltaTime)
+{
+	Advect(velocities);
+	Advect(densities);
+	// I dont think anything else needs advection yet
+
+	Diverge();
+	for (size_t i = 0; i < 16; i++)
+	{
+		Pressure();
+	}
+	Project();
+	// I think thats it...? this feels like a short update for the complicated thing that this is
+}
+
+void Fluid::Advect(FluidDataBuffer buffers[2])
+{
+	// Need to set srv and uavs
+	// set constant buffers
+	// REMEMBER TO copy all buffers
+	// dispatch
+	// swap buffers
+	// uhhhhhhh *checks demo* is there anything else?
+	// oh i should probably unset buffers, that seems like a good idea
+}

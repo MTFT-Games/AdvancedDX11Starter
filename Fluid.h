@@ -25,7 +25,7 @@ public:
 		std::shared_ptr<SimpleComputeShader> divergenceCS,
 		std::shared_ptr<SimpleComputeShader> pressureCS,
 		std::shared_ptr<SimpleComputeShader> projectionCS);
-	void Update();
+	void Update(float deltaTime);
 	void Draw();
 	Transform transform;
 private:
@@ -38,6 +38,9 @@ private:
 	std::shared_ptr<SimpleComputeShader> projectionCS;
 
 	void Advect(FluidDataBuffer buffers[2]); // remember to swap them when implementing
+	void Diverge();
+	void Pressure(); // remember to swap buffers and do it several times
+	void Project();
 
 	DirectX::XMUINT3 gridSize;
 	
